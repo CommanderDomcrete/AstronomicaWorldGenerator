@@ -68,23 +68,20 @@ public static class SubdivideFunctions
         return midpointIndex;
     }
 
-    public static Vector3 CalculateCentroid(int[] triangles, int i, Vector3[] vertices) {
-        int v1 = triangles[i];
-        int v2 = triangles[i + 1];
-        int v3 = triangles[i + 2];
-
+    public static Vector3 CalculateCentroid(Vector3 vertexPos1, Vector3 vertexPos2, Vector3 vertexPos3) {
         // Calculate the centroid of the triangle
-        Vector3 centroid = (vertices[v1] + vertices[v2] + vertices[v3]) / 3f;
+        Vector3 centroid = (vertexPos1 + vertexPos2 + vertexPos3) / 3f;
         return centroid;
     }
+
     // inputs are the 3 original vertices
     public static List<int> SubdivideTriangle(int v1, int v2, int v3, List<Vector3> vertices) {
         List<int> newTriangles = new List<int>();
         Dictionary<int, int> midpointCache = new Dictionary<int, int>();
-        // Subdivide the triangle
 
-
-        int a = GetMidpointIndex(v1, v2, vertices, midpointCache);
+		//if (vertices.Count != 3) Debug.LogWarning($"From SubdivideFunctions.cs in SubdivideTriangle. vertices count = {vertices.Count} which is bad and you should feel bad.");
+		// Subdivide the triangle
+		int a = GetMidpointIndex(v1, v2, vertices, midpointCache);
         int b = GetMidpointIndex(v2, v3, vertices, midpointCache);
         int c = GetMidpointIndex(v3, v1, vertices, midpointCache);
 
@@ -94,6 +91,6 @@ public static class SubdivideFunctions
         newTriangles.AddRange(new[] { a, b, c });
         
         return newTriangles;
-
+        
     }
 }
