@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
+using UnityEngine.UIElements;
 
 public static class SubdivideFunctions
 {
@@ -56,8 +57,9 @@ public static class SubdivideFunctions
 
         //Calculate midpoint by averaging the positions of the two vertices
         Vector3 midpoint = (vertices[index1] + vertices[index2]) / 2f;
-        vertices.Add(midpoint.normalized); // Normalize to sphere surface and adds to vertices list
 
+        vertices.Add(midpoint.normalized); // Normalize to sphere surface and adds to vertices list
+        
         // Cache the midpoint index
         // When a new vertex (the calculated midpoint) is added to the  list, it becomes the last element in that list.
         // List indices (plural for index) are 0 based so the newly added vertex is the number of stored vertices - 1, which gives the position of the last element in that list
@@ -68,6 +70,40 @@ public static class SubdivideFunctions
         return midpointIndex;
     }
 
+    private static int GetMidpointIndexForVertexCache(int index1, int index2, List<Vector3> vertices, Dictionary<int, int> midpointCache, float radius) {
+        // Create a unique key for the edge
+        int smallerIndex = Mathf.Min(index1, index2);
+        int largerIndex = Mathf.Max(index1, index2);
+        int edgeKey = (smallerIndex << 16) | largerIndex;
+        // Uses bit manipulation to combine smallerIndex and largerIndex into a single integer key. 
+        // This avoids the need for complex data structures and ensures fast lookups.
+
+        // Check if midpoint already exists
+        if (midpointCache.TryGetValue(edgeKey, out int midpointIndex)) {
+            return midpointIndex;
+        }
+
+        //Calculate midpoint by averaging the positions of the two vertices
+        Vector3 midpoint = (vertices[index1] + vertices[index2]) / 2f;
+        //Debug.Log($"Midpoint: {midpoint}"); // Debug log to check midpoint calculation
+
+        VertexCacheKey key = new VertexCacheKey(midpoint.normalized * radius); // normalise vertex for key generation
+        if (!LODManager.vertexCacheIndex.TryGetValue(key, out int index)) {
+            index = LODManager.vertexCache.Count;
+            vertices.Add(midpoint.normalized * radius); // Normalize to sphere surface and adds to vertices list
+            LODManager.vertexCacheIndex[key] = index;
+        }
+
+        // Cache the midpoint index
+        // When a new vertex (the calculated midpoint) is added to the  list, it becomes the last element in that list.
+        // List indices (plural for index) are 0 based so the newly added vertex is the number of stored vertices - 1, which gives the position of the last element in that list
+        // When you add the new midpoint to the  list, it is appended to the end of the list.
+        midpointIndex = vertices.Count - 1;
+        midpointCache[edgeKey] = midpointIndex;
+
+        return index;
+    }
+
     public static Vector3 CalculateCentroid(Vector3 vertexPos1, Vector3 vertexPos2, Vector3 vertexPos3) {
         // Calculate the centroid of the triangle
         Vector3 centroid = (vertexPos1 + vertexPos2 + vertexPos3) / 3f;
@@ -75,15 +111,15 @@ public static class SubdivideFunctions
     }
 
     // inputs are the 3 original vertices
-    public static List<int> SubdivideTriangle(int v1, int v2, int v3, List<Vector3> vertices) {
+    public static List<int> SubdivideTriangle(int v1, int v2, int v3, List<Vector3> vertices, float planetRadius) {
         List<int> newTriangles = new List<int>();
         Dictionary<int, int> midpointCache = new Dictionary<int, int>();
 
 		//if (vertices.Count != 3) Debug.LogWarning($"From SubdivideFunctions.cs in SubdivideTriangle. vertices count = {vertices.Count} which is bad and you should feel bad.");
 		// Subdivide the triangle
-		int a = GetMidpointIndex(v1, v2, vertices, midpointCache);
-        int b = GetMidpointIndex(v2, v3, vertices, midpointCache);
-        int c = GetMidpointIndex(v3, v1, vertices, midpointCache);
+		int a = GetMidpointIndexForVertexCache(v1, v2, vertices, midpointCache, planetRadius);
+        int b = GetMidpointIndexForVertexCache(v2, v3, vertices, midpointCache, planetRadius);
+        int c = GetMidpointIndexForVertexCache(v3, v1, vertices, midpointCache, planetRadius);
 
         newTriangles.AddRange(new[] { v1, a, c });
         newTriangles.AddRange(new[] { v2, b, a });

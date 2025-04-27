@@ -4,10 +4,18 @@ using UnityEngine;
 [CustomEditor(typeof(PlanetGenerator))]
 public class PlanetGeneratorEditor : Editor
 {
+
+    Editor BiomeEditor;
     public override void OnInspectorGUI() {
         // Reference to the target script
         PlanetGenerator planetGenerator = (PlanetGenerator)target;
 
+        planetGenerator.biomeSettings = (BiomeSettings)EditorGUILayout.ObjectField("Biome Settings", planetGenerator.biomeSettings, typeof(BiomeSettings), true);
+
+        EditorGUILayout.LabelField("Biome Settings", EditorStyles.boldLabel);
+        DrawSettingsEditor(planetGenerator.biomeSettings);
+
+        EditorGUILayout.Space();
         // Header Section
         EditorGUILayout.LabelField("Planet Settings", EditorStyles.boldLabel);
 
@@ -34,7 +42,11 @@ public class PlanetGeneratorEditor : Editor
         if (GUILayout.Button("Generate Planet")) {
             planetGenerator.Initialize();
             planetGenerator.GenerateGeodesicSphere(planetGenerator.GetComponent<MeshFilter>().sharedMesh);
-
+            planetGenerator.GenerateContinents();
         }
+    }
+    void DrawSettingsEditor(Object settings) {
+        Editor editor = CreateEditor(settings);
+        editor.OnInspectorGUI();
     }
 }
