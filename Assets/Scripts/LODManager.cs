@@ -109,14 +109,14 @@ public class LODManager : MonoBehaviour {
         
         foreach (var node in new List<KeyValuePair<TriangleCacheKey, QuadTreeNode>>(visibleNodes)) {
             //Debug.LogFormat($"Generating children for node: {node.Key} from the big dictionary ({nodeIndex}/{visibleNodes.Count})");
-            node.Value.GenerateChildren(planetGenerator.radius, playerCamera.transform.position);
+            node.Value.GenerateChildren(planetGenerator.geometrySettings.radius, playerCamera.transform.position);
             // call entry.Value.GenerateChildren(...)
             nodeIndex++;
         }
         foreach (var node in new List<KeyValuePair<TriangleCacheKey, QuadTreeNode>>(visibleNodes)) {
             //Debug.LogFormat($"Generating children for node: {node.Key} from the big dictionary ({nodeIndex}/{visibleNodes.Count})");
             // call entry.Value.GenerateChildren(...)
-            node.Value.RemoveChildren(planetGenerator.radius, playerCamera.transform.position);
+            node.Value.RemoveChildren(planetGenerator.geometrySettings.radius, playerCamera.transform.position);
         }
         yield return new WaitForSeconds(5f);
         // compare dictionary of leaf nodes to dictionary of all loaded nodes

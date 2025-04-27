@@ -1,7 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 
-public class BiomeGenerator : MonoBehaviour
+public class ContinentGenerator : MonoBehaviour
 {
     [Header("Continent Settings")]
     [SerializeField] public int continentCount = 5; // Number of continents to generate
@@ -10,11 +10,15 @@ public class BiomeGenerator : MonoBehaviour
     [SerializeField] public Vector3 noiseOffset = new Vector3(0, 0, 0); // Offset for the noise function
     [SerializeField] public int octaves = 4; // Number of octaves for the noise function
     [SerializeField] public float noiseStrength = 0.5f; // Strength of the noise distortion
+    Texture2D texture;
+    const int textureResolution = 512;
     NoiseFilter continentNoiseFilter;
+    public ContinentMaskSettings continentMaskSettings; // Reference to the continent mask settings
 
     public void GenerateContinents(Mesh planetMesh) {
-        CreateCellCentres(planetMesh.vertices); // Generate cell centres for the continents
-        ColourContinents(planetMesh, AssignVerticesToCells((planetMesh.vertices), CreateCellCentres(planetMesh.vertices))); // Colour the continents based on the assigned vertices
+        //CreateCellCentres(planetMesh.vertices); // Generate cell centres for the continents
+        //ColourContinents(planetMesh, AssignVerticesToCells((planetMesh.vertices), CreateCellCentres(planetMesh.vertices))); // Colour the continents based on the assigned vertices
+        GenerateContinentsMask();
     }
 
     private List<Vector3> CreateCellCentres(Vector3[] meshVertices) {
@@ -74,6 +78,68 @@ public class BiomeGenerator : MonoBehaviour
             colors[i] = new Color(Random.value, Random.value, Random.value); // Generate a random color
         }
         return colors;
+    }
+
+    public void GenerateContinentsMask() {
+        MeshRenderer meshRenderer = GetComponent<MeshRenderer>();
+
+        if (texture == null || texture.width != textureResolution || texture.height != textureResolution) {
+            texture = new Texture2D(textureResolution, textureResolution);
+        }
+
+        // Generate Voronoi cells
+        Color[] colors = new Color[textureResolution * textureResolution];
+        Vector2[] cellCenters = GenerateVoronoiCellCenters(10); // Example: 10 cells
+        int[] cellPriorities = GenerateCellPriorities(cellCenters.Length);
+
+        for (int y = 0; y < textureResolution; y++) {
+            for (int x = 0; x < textureResolution; x++) {
+                Vector2 point = new Vector2((float)x / textureResolution, (float)y / textureResolution);
+                int cellIndex = GetClosestCellIndex(point, cellCenters);
+                float priority = cellPriorities[cellIndex] / (float)cellPriorities.Length;
+
+                // Assign a color based on the cell index and priority
+                colors[y * textureResolution + x] = Color.Lerp(Color.black, Color.white, priority);
+            }
+        }
+
+        // Apply the colors to the texture
+        texture.SetPixels(colors);
+        texture.Apply();
+
+        // Assign the texture to the material
+        continentMaskSettings.worldMaterial.SetTexture("_continentsMask", texture);
+    }
+
+    private Vector2[] GenerateVoronoiCellCenters(int cellCount) {
+        Vector2[] centers = new Vector2[cellCount];
+        for (int i = 0; i < cellCount; i++) {
+            centers[i] = new Vector2(Random.value, Random.value); // Randomly distribute cell centers
+        }
+        return centers;
+    }
+
+    private int[] GenerateCellPriorities(int cellCount) {
+        int[] priorities = new int[cellCount];
+        for (int i = 0; i < cellCount; i++) {
+            priorities[i] = Random.Range(1, 100); // Assign random priorities
+        }
+        return priorities;
+    }
+
+    private int GetClosestCellIndex(Vector2 point, Vector2[] cellCenters) {
+        int closestIndex = 0;
+        float closestDistance = float.MaxValue;
+
+        for (int i = 0; i < cellCenters.Length; i++) {
+            float distance = Vector2.Distance(point, cellCenters[i]);
+            if (distance < closestDistance) {
+                closestDistance = distance;
+                closestIndex = i;
+            }
+        }
+
+        return closestIndex;
     }
 
 }

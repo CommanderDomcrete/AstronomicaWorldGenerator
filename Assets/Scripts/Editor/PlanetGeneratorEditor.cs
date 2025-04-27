@@ -2,19 +2,20 @@ using UnityEditor;
 using UnityEngine;
 
 [CustomEditor(typeof(PlanetGenerator))]
-public class PlanetGeneratorEditor : Editor
-{
-
-    Editor BiomeEditor;
+public class PlanetGeneratorEditor : Editor {
+    PlanetGenerator planetGenerator;
+    Editor geometryEditor;
+    Editor continentEditor;
     public override void OnInspectorGUI() {
-        // Reference to the target script
-        PlanetGenerator planetGenerator = (PlanetGenerator)target;
-
-        planetGenerator.biomeSettings = (BiomeSettings)EditorGUILayout.ObjectField("Biome Settings", planetGenerator.biomeSettings, typeof(BiomeSettings), true);
-
-        EditorGUILayout.LabelField("Biome Settings", EditorStyles.boldLabel);
-        DrawSettingsEditor(planetGenerator.biomeSettings);
-
+        using (var check = new EditorGUI.ChangeCheckScope()) {
+            base.OnInspectorGUI();
+            if(check.changed) {
+                planetGenerator.GeneratePlanet();
+            }
+        }
+        DrawSettingsEditor(planetGenerator.geometrySettings, planetGenerator.OnGeometrySettingsUpdated, ref planetGenerator.geometrySettingsFoldout, ref geometryEditor);
+        DrawSettingsEditor(planetGenerator.continentMaskSettings, planetGenerator.OnContinentMaskSettingsUpdated, ref planetGenerator.continentMaskSettingsFoldout, ref continentEditor);
+        /*
         EditorGUILayout.Space();
         // Header Section
         EditorGUILayout.LabelField("Planet Settings", EditorStyles.boldLabel);
@@ -34,19 +35,36 @@ public class PlanetGeneratorEditor : Editor
         // Debug visualization toggle
         EditorGUILayout.LabelField("Debug Settings", EditorStyles.boldLabel);
         planetGenerator.debugViewEnabled = EditorGUILayout.Toggle("Enable Debug View", planetGenerator.debugViewEnabled);
-
-        EditorGUILayout.Space();
-
-        // Generate Planet Button
-        EditorGUILayout.Space();
+        }
+        */
         if (GUILayout.Button("Generate Planet")) {
-            planetGenerator.Initialize();
-            planetGenerator.GenerateGeodesicSphere(planetGenerator.GetComponent<MeshFilter>().sharedMesh);
+            planetGenerator.GeneratePlanet();
             planetGenerator.GenerateContinents();
         }
     }
-    void DrawSettingsEditor(Object settings) {
-        Editor editor = CreateEditor(settings);
-        editor.OnInspectorGUI();
+
+    void DrawSettingsEditor(Object settings, System.Action onSettingsUpdated, ref bool foldout, ref Editor editor) {
+
+        if (settings != null) {
+            foldout = EditorGUILayout.InspectorTitlebar(foldout, settings);
+
+            using (var check = new EditorGUI.ChangeCheckScope()) {
+
+                if (foldout) {
+                    CreateCachedEditor(settings, null, ref editor);
+                    editor.OnInspectorGUI();
+
+                    if (check.changed) {
+                        if (onSettingsUpdated != null) {
+                            onSettingsUpdated();
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private void OnEnable() {
+        planetGenerator = (PlanetGenerator)target;
     }
 }

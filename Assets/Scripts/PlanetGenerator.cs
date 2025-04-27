@@ -1,31 +1,32 @@
 using UnityEngine;
 using System.Collections.Generic;
+using Unity.VisualScripting;
 
 //[RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
-public class PlanetGenerator : MonoBehaviour
-{
-    [Header("Planet Settings")]
-    [SerializeField] public float radius = 10f;
-    [SerializeField] public int previewResolution = 3; // controls resolution of the sphere
-    [SerializeField] public float tilingFactor = 1f;
+public class PlanetGenerator : MonoBehaviour {
 
     [Header("Debug Settings")]
     [SerializeField] public bool debugViewEnabled = true; // Toggle for Debug view
 
-    [Header("LOD Settings")]
-    [SerializeField] public int maxResolution = 6;   // Maximum resolution for highest LOD
-    [SerializeField] public float faceSize = 5f;   // Size of each quad tree node face
+    public bool autoUpdate = true; // Automatically update the mesh when settings change    
+
+    public GeometrySettings geometrySettings; // Reference to GeometrySettings scriptable object
+    [HideInInspector]
+    public bool geometrySettingsFoldout; // Foldout for GeometrySettings in the inspector
+
+    public ContinentMaskSettings continentMaskSettings;
+    [HideInInspector]
+    public bool continentMaskSettingsFoldout; // Foldout for ContinentMaskSettings in the inspector
 
     private MeshFilter meshFilter;
     private Mesh generatedMesh; // Store the mesh for shared access
-    private Dictionary<int, int> subdivisionLevels = new Dictionary<int, int>(); // Tracks LOD per triangle
-    
-    public BiomeSettings biomeSettings; // Reference to the BiomeSettings scriptable object
 
-    MaskGenerator maskGenerator = new MaskGenerator(); // Reference to the MaskGenerator script
-
+    public void GeneratePlanet() {
+        Initialize(); // Ensure the mesh filter is initialized
+        GenerateGeodesicSphere(); // Generate the geodesic sphere
+        //GenerateContinents(); // Generate continents based on the mesh vertices
+    }
     public void Initialize() {  // Check if Mesh Filter component is attached
-        maskGenerator.UpdateSettings(biomeSettings); // Initialize the MaskGenerator with the BiomeSettings
 
         meshFilter = GetComponent<MeshFilter>();
         if (meshFilter == null) {
@@ -34,9 +35,8 @@ public class PlanetGenerator : MonoBehaviour
         }
     }
     // Generate base sphere mesh
-    public void GenerateGeodesicSphere(Mesh mesh) {
-
-        
+    public void GenerateGeodesicSphere() {
+        Mesh mesh = GetComponent<MeshFilter>().sharedMesh;
 
         generatedMesh = mesh; // Store the mesh for later use
         Vector2[] uv = mesh.uv; // Store the UVs for later use
@@ -71,20 +71,20 @@ public class PlanetGenerator : MonoBehaviour
 
 
         // Subdivide triangles based on resolution.
-        for (int i = 0; i < previewResolution; i++) { // Higher the resolution, the more subdivisions
+        for (int i = 0; i < geometrySettings.resolution; i++) { // Higher the resolution, the more subdivisions
             SubdivideFunctions.SubdivideTriangles(vertices, triangles);
         }
 
         // Normalize vertices to create spherical shape.
         for (int i = 0; i < vertices.Count; i++) {
-            vertices[i] = vertices[i].normalized * radius;
+            vertices[i] = vertices[i].normalized * geometrySettings.radius;
         }
-        
+
         Vector2[] uvs = new Vector2[vertices.Count];
         for (int i = 0; i < vertices.Count; i++) {
             uvs[i] = CalculateCubeMapUV(vertices[i]);
         }
-        
+
 
         // Assign vertices and triangles to the mesh.
         mesh.Clear(); // Clear mesh so we do not have multiple meshes when we regenerate
@@ -92,12 +92,15 @@ public class PlanetGenerator : MonoBehaviour
         mesh.triangles = triangles.ToArray();
         mesh.uv = uvs;
         mesh.RecalculateNormals();
-        meshFilter.GetComponent<MeshRenderer>().sharedMaterial = biomeSettings.planetMaterial;
-
-        maskGenerator.UpdateMask(); // Update the mask based on the biome settings
+        if (GetComponent<MeshRenderer>().sharedMaterial == null) {
+            GetComponent<MeshRenderer>().sharedMaterial = continentMaskSettings.worldMaterial; // Assign material from GeometrySettings
+        }
+        /*
+        maskGenerator.GenerateVoronoiTexture(); // Update the mask based on the biome settings
         if (meshFilter.gameObject.activeSelf) {
             UpdateUVs(maskGenerator, mesh); // Update UVs based on the mask generator
         }
+        */
     }
 
     private Vector2 CalculateCubeMapUV(Vector3 position) {
@@ -109,20 +112,21 @@ public class PlanetGenerator : MonoBehaviour
             // Map to the +x or -x face
             uv = new Vector2(position.z / position.x, position.y / position.x);
             uv = position.x > 0 ? uv * 0.5f + new Vector2(0.5f, 0.5f) : uv * -0.5f + new Vector2(0.5f, 0.5f);
-        } else if (absPos.y >= absPos.x && absPos.y >= absPos.z) {
+        }
+        else if (absPos.y >= absPos.x && absPos.y >= absPos.z) {
             // Map to the +y or -y face
             uv = new Vector2(position.x / position.y, position.z / position.y);
             uv = position.y > 0 ? uv * 0.5f + new Vector2(0.5f, 0.5f) : uv * -0.5f + new Vector2(0.5f, 0.5f);
-        } else {
+        }
+        else {
             // Map to the +z or -z face
             uv = new Vector2(position.x / position.z, position.y / position.z);
             uv = position.z > 0 ? uv * 0.5f + new Vector2(0.5f, 0.5f) : uv * -0.5f + new Vector2(0.5f, 0.5f);
         }
-        uv *= tilingFactor; // Apply tiling factor
 
         return uv;
     }
-
+    /*
     public void UpdateUVs(MaskGenerator maskGenerator, Mesh mesh) {
         // Update UVs based on the mask generator
         Vector2[] uv = new Vector2[mesh.vertexCount];
@@ -132,15 +136,15 @@ public class PlanetGenerator : MonoBehaviour
         }
         mesh.uv = uv;
     }
-
+    */
     public void GenerateContinents() {
         // Generate continents based on the mesh vertices
-        BiomeGenerator biomeGenerator = GetComponent<BiomeGenerator>();
-        if (biomeGenerator != null) {
-            biomeGenerator.GenerateContinents(generatedMesh);
+        ContinentGenerator continentGenerator = GetComponent<ContinentGenerator>();
+        if (continentGenerator != null) {
+            continentGenerator.GenerateContinents(generatedMesh);
         }
         else {
-            Debug.LogWarning("BiomeGenerator component not found. Cannot generate continents.");
+            Debug.LogWarning("ContinentGenerator component not found. Cannot generate continents.");
         }
     }
 
@@ -172,9 +176,9 @@ public class PlanetGenerator : MonoBehaviour
     }
 
     public void SetResolution(int newResolution) {
-        if (newResolution != previewResolution) {
-            previewResolution = newResolution;
-            GenerateGeodesicSphere(GetComponent<MeshFilter>().sharedMesh); // Regenerate sphere with new resolution
+        if (newResolution != geometrySettings.resolution) {
+            geometrySettings.resolution = newResolution;
+            GenerateGeodesicSphere(); // Regenerate sphere with new resolution
         }
     }
 
@@ -224,5 +228,16 @@ public class PlanetGenerator : MonoBehaviour
         // Assign the color array to the mesh
         planetMesh.colors = colors;
     }
-
+    public void OnGeometrySettingsUpdated() {
+        if (autoUpdate) {
+            Initialize(); // Ensure the mesh filter is initialized
+            GenerateGeodesicSphere(); // Regenerate the mesh when geometry settings are updated
+        }
+    }
+    public void OnContinentMaskSettingsUpdated() {
+        if (autoUpdate) {
+            Initialize(); // Ensure the mesh filter is initialized
+            GenerateContinents(); // Regenerate the continents when continent mask settings are updated
+        }
+    }
 }

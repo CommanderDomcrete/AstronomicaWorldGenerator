@@ -25,7 +25,8 @@ Material:
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
-  m_InvalidKeywords: []
+  m_InvalidKeywords:
+  - _TEXTURESELECT_A
   m_LightmapFlags: 2
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
@@ -49,6 +50,10 @@ Material:
         m_Texture: {fileID: 2800000, guid: d311f3ded404042408d9caecdb0374a0, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _continentsMask:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _texture:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
@@ -70,6 +75,7 @@ Material:
     - _DebugLOD: 1
     - _QueueControl: 0
     - _QueueOffset: 0
+    - _TEXTURESELECT: 0
     - _Tiling: 1
     m_Colors: []
   m_BuildTextureStacks: []
